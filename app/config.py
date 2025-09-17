@@ -47,6 +47,9 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
     JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get('JWT_ACCESS_TOKEN_EXPIRES', 3600))  # 1 hora por defecto
     
+    # Configuración de CORS
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
+    
     # Configuración de sesiones
     SESSION_TYPE = 'filesystem'
     SESSION_PERMANENT = False

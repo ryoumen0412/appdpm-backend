@@ -28,6 +28,7 @@ Endpoints implementados:
 
 from flask import Blueprint, request, jsonify, session
 from app import db
+from sqlalchemy import or_
 from app.models import (
     Usuario, PersonasACargo, PersonasMayores, CentrosComunitarios, 
     Actividades, Talleres, Servicios, TrabajadoresApoyo, 
@@ -529,9 +530,84 @@ def delete_persona_a_cargo(current_user, rut):
 @api_bp.route('/personas-mayores', methods=['GET'])
 @apoyo_required  # Todos pueden ver
 def get_personas_mayores(current_user):
-    """Obtener todas las personas mayores"""
-    personas = PersonasMayores.query.all()
-    return jsonify([persona.to_dict() for persona in personas])
+    """
+    Obtener personas mayores con paginación y búsqueda
+    
+    Query Parameters:
+        - page (int): Número de página (default: 1)
+        - per_page (int): Registros por página (default: 50, max: 100)
+        - search (str): Búsqueda por RUT, nombre o apellidos
+        - sector (str): Filtro por sector
+        - genero (str): Filtro por género
+    
+    Returns:
+        JSON con datos paginados y metadatos
+    """
+    try:
+        # Parámetros de paginación
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 100)  # Máximo 100 por página
+        
+        # Parámetros de búsqueda y filtros
+        search = request.args.get('search', '').strip()
+        sector = request.args.get('sector', '').strip()
+        genero = request.args.get('genero', '').strip()
+        
+        # Construir query base
+        query = PersonasMayores.query
+        
+        # Aplicar filtros de búsqueda
+        if search:
+            search_filter = f"%{search}%"
+            query = query.filter(
+                db.or_(
+                    PersonasMayores.rut.ilike(search_filter),
+                    PersonasMayores.nombre.ilike(search_filter),
+                    PersonasMayores.apellidos.ilike(search_filter)
+                )
+            )
+        
+        # Aplicar filtros específicos
+        if sector:
+            query = query.filter(PersonasMayores.sector.ilike(f"%{sector}%"))
+            
+        if genero:
+            query = query.filter(PersonasMayores.genero == genero)
+        
+        # Ordenar por apellidos, nombre
+        query = query.order_by(PersonasMayores.apellidos, PersonasMayores.nombre)
+        
+        # Ejecutar paginación
+        personas_paginated = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        
+        # Preparar respuesta
+        response = {
+            'data': [persona.to_dict() for persona in personas_paginated.items],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': personas_paginated.total,
+                'pages': personas_paginated.pages,
+                'has_prev': personas_paginated.has_prev,
+                'has_next': personas_paginated.has_next,
+                'prev_num': personas_paginated.prev_num,
+                'next_num': personas_paginated.next_num
+            },
+            'filters': {
+                'search': search,
+                'sector': sector,
+                'genero': genero
+            }
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        return jsonify({'error': 'Error al obtener personas mayores', 'details': str(e)}), 500
 
 @api_bp.route('/personas-mayores/<string:rut>', methods=['GET'])
 def get_persona_mayor(rut):
