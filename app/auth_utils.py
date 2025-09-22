@@ -193,6 +193,22 @@ def can_create_users(f):
     return decorated
 
 
+def can_manage_users(f):
+    """
+    Decorador para endpoints que requieren permisos para gestionar usuarios (admin y encargado).
+    Permite listar, ver detalles y realizar operaciones básicas de gestión de usuarios.
+    """
+    @wraps(f)
+    @token_required
+    def decorated(current_user, *args, **kwargs):
+        if not (current_user.is_admin() or current_user.is_encargado()):
+            return jsonify({'error': 'Acceso denegado: se requieren permisos de administrador o encargado'}), 403
+        
+        return f(current_user, *args, **kwargs)
+    
+    return decorated
+
+
 def can_delete_vital_records(f):
     """
     Decorador para endpoints que requieren permisos para eliminar registros vitales (solo admin).

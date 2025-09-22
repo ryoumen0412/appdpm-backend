@@ -88,8 +88,13 @@ def _configure_logging(app):
         
 def _register_blueprints(app):
     try:
-        from .routes import api_bp
-        app.register_blueprint(api_bp, url_prefix='/api')
+        # Import new modular blueprint registration function
+        from .routes.api import register_api_blueprints
+        
+        # Register all modular blueprints
+        register_api_blueprints(app)
+        
+        app.logger.info('All modular API blueprints registered successfully')
         
         @app.route('/health')
         def health_check():
@@ -98,7 +103,8 @@ def _register_blueprints(app):
                 return jsonify({
                     'status': 'healthy',
                     'database': 'connected',
-                    'version': app.config.get('APP_VERSION', '1.0.0')
+                    'version': app.config.get('APP_VERSION', '1.0.0'),
+                    'modules': ['auth', 'usuarios', 'personas', 'centros', 'actividades', 'servicios']
                 }), 200
             except Exception as e:
                 app.logger.error(f'Health check failed: {str(e)}')
