@@ -6,6 +6,7 @@ RESTful endpoints for complete user administration.
 
 from flask import Blueprint, request
 from app.auth_utils import admin_required, can_manage_users
+from app.extensions import limiter
 from app.api.utils import (
     success_response, error_response, created_response,
     handle_validation_error, handle_business_logic_error, handle_db_error,
@@ -72,6 +73,7 @@ def get_usuario(current_user, usuario_id):
 
 
 @usuarios_bp.route('/', methods=['POST'])
+@limiter.limit("10 per hour")
 @admin_required
 def create_usuario(current_user):
     """
@@ -163,6 +165,7 @@ def delete_usuario(current_user, usuario_id):
 
 
 @usuarios_bp.route('/<int:usuario_id>/reset-password', methods=['POST'])
+@limiter.limit("5 per hour")
 @admin_required
 def reset_password(current_user, usuario_id):
     """

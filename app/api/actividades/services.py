@@ -8,7 +8,7 @@ Business        # Validate name length
 """
 
 from datetime import datetime
-from app import db
+from app.extensions import db
 from app.models import Actividades, Talleres, CentrosComunitarios, PersonasACargo
 from app.api.utils import paginate_query
 from app.api.utils.errors import ValidationError, BusinessLogicError

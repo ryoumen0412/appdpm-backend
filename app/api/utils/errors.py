@@ -6,7 +6,7 @@ Provides common error handling patterns and custom exceptions.
 
 import logging
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from app import db
+from app.extensions import db
 from .responses import error_response
 
 logger = logging.getLogger(__name__)

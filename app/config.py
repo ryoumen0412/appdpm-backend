@@ -68,3 +68,9 @@ class Config:
     
     # Configuraciones de SQLAlchemy
     SQLALCHEMY_TRACK_MODIFICATIONS = False  # Desactivar para mejorar rendimiento
+    
+    # Configuración de Rate Limiting
+    RATELIMIT_STORAGE_URL = os.environ.get('RATELIMIT_STORAGE_URL', 'memory://')
+    RATELIMIT_DEFAULT = os.environ.get('RATELIMIT_DEFAULT', '1000 per hour')
+    RATELIMIT_HEADERS_ENABLED = True
+    RATELIMIT_SWALLOW_ERRORS = True  # No fallar si Redis no está disponible

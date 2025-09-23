@@ -6,6 +6,7 @@ RESTful endpoints for user authentication and account management.
 
 from flask import Blueprint, request
 from app.auth_utils import token_required, can_create_users
+from app.extensions import limiter
 from app.api.utils import (
     success_response, error_response, created_response,
     handle_validation_error, handle_business_logic_error, handle_db_error,
@@ -17,6 +18,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 
 @auth_bp.route('/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def login():
     """
     Authenticate user in the system.
@@ -74,6 +76,7 @@ def logout(current_user):
 
 
 @auth_bp.route('/register', methods=['POST'])
+@limiter.limit("3 per minute")
 @can_create_users
 def register(current_user):
     """
@@ -157,6 +160,7 @@ def update_profile(current_user):
 
 
 @auth_bp.route('/change-password', methods=['POST'])
+@limiter.limit("3 per minute")
 @token_required
 def change_password(current_user):
     """

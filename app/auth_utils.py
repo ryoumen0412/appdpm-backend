@@ -12,7 +12,7 @@ import secrets
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import current_app, request, jsonify, session
-from app import db
+from app.extensions import db
 from app.models import Usuario
 
 

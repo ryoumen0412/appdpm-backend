@@ -4,7 +4,7 @@ Maintenance Services
 Business logic layer for maintenance management operations.
 """
 
-from app import db
+from app.extensions import db
 from app.models import Mantenciones, CentrosComunitarios
 from app.api.utils import paginate_query
 from app.api.utils.errors import ValidationError, BusinessLogicError

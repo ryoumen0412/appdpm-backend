@@ -5,7 +5,7 @@ RESTful endpoints for managing elderly people in the system.
 """
 
 from flask import Blueprint, request
-from app import db
+from app.extensions import db
 from app.models import PersonasMayores
 from app.auth_utils import apoyo_required, can_update_records, can_delete_vital_records
 from app.api.utils import (

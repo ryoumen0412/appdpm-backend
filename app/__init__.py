@@ -2,17 +2,10 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from sqlalchemy import text
 from .config import Config
-
-db = SQLAlchemy()
-migrate = Migrate()
-cors = CORS()
-limiter = Limiter(key_func=get_remote_address, default_limits=["200 per day", "50 per hour"])
+from .extensions import db, migrate, cors, limiter
+from .security_headers import setup_security_headers
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -25,6 +18,7 @@ def create_app(config_class=Config):
         _register_blueprints(app)
         _register_error_handlers(app)
         _init_database(app)
+        _setup_security(app)
         
         app.logger.info('Application factory completed')
         return app
@@ -48,6 +42,7 @@ def _init_extensions(app):
     try:
         db.init_app(app)
         migrate.init_app(app, db)
+        limiter.init_app(app)
         
         cors.init_app(app, resources={
             r"/api/*": {
@@ -97,9 +92,10 @@ def _register_blueprints(app):
         app.logger.info('All modular API blueprints registered successfully')
         
         @app.route('/health')
+        @app.route('/api/health') # Compatibilidad con scripts de testing
         def health_check():
             try:
-                db.session.execute('SELECT 1')
+                db.session.execute(text('SELECT 1'))
                 return jsonify({
                     'status': 'healthy',
                     'database': 'connected',
@@ -172,7 +168,7 @@ def _init_database(app):
 
                 from . import models
                     
-                db.session.execute('SELECT 1')
+                db.session.execute(text('SELECT 1'))
                     
                 db.create_all()
                 app.logger.info('Database tables initialized successfully')
@@ -182,5 +178,16 @@ def _init_database(app):
                 raise ConnectionError(f'Database setup failed: {str(e)}')
     else:
         app.logger.info('Skipping database initialization in production (use migrations)')
+
+def _setup_security(app):
+    """Configurar headers de seguridad y otras medidas de seguridad"""
+    try:
+        # Configurar headers de seguridad
+        setup_security_headers(app)
+        app.logger.info('Security headers configured successfully')
+        
+    except Exception as e:
+        app.logger.error(f'Security setup failed: {str(e)}')
+        raise RuntimeError(f'Security configuration failed: {str(e)}')
             
 __all__ = ['create_app', 'db']

@@ -7,7 +7,7 @@ Bus        if 'nombre' in data and data['nombre']:
 """
 
 from datetime import datetime
-from app import db
+from app.extensions import db
 from app.models import (
     Servicios, Mantenciones, TrabajadoresApoyo, Participa, Gestiona,
     PersonasMayores, PersonasACargo, CentrosComunitarios

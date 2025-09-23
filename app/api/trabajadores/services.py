@@ -4,7 +4,7 @@ Support Workers Services
 Business logic layer for support worker management operations.
 """
 
-from app import db
+from app.extensions import db
 from app.models import TrabajadoresApoyo, CentrosComunitarios
 from app.api.utils import paginate_query
 from app.api.utils.errors import ValidationError, BusinessLogicError

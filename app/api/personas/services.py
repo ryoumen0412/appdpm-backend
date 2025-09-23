@@ -5,7 +5,7 @@ Business logic layer for person-related operations.
 """
 
 from sqlalchemy import or_
-from app import db
+from app.extensions import db
 from app.models import PersonasMayores, PersonasACargo
 from app.api.utils.errors import ValidationError, BusinessLogicError
 from app.auth_utils import validate_rut, clean_rut

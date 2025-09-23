@@ -4,7 +4,7 @@ Authentication Services
 Business logic layer for authentication operations.
 """
 
-from app import db
+from app.extensions import db
 from app.models import Usuario
 from app.api.utils.errors import ValidationError, BusinessLogicError
 from app.auth_utils import (
