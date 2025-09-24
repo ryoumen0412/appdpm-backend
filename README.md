@@ -1,15 +1,20 @@
-# DPM Backend API - Documentación Técnica
+# DPM Backend API - Sistema Interno
 
 ## Descripción General
 
-Sistema de gestión para Departamento de Personas Mayores (DPM) desarrollado con Flask y arquitectura modular. La API REST proporciona endpoints para la gestión integral de personas mayores, centros comunitarios, actividades, servicios y personal de apoyo.
+API REST interna para la gestión del Departamento de Personas Mayores (DPM). Sistema desarrollado con Flask y arquitectura modular, diseñado específicamente para uso interno organizacional sin exposición pública.
+
+**Propósito**: Aplicación web de uso interno exclusivo
+**Audiencia**: Personal interno autorizado
+**Acceso**: Red interna únicamente
 
 ## Estado del Sistema
 
-**Estado Actual**: Operativo
-**Última Verificación**: 23 de Septiembre, 2025
-**Integridad del Código**: 8.8/10 - Excelente
-**Estado de Seguridad**: Implementado y verificado
+**Estado Actual**: Operativo ✅
+**Última Verificación**: 24 de Septiembre, 2025
+**Integridad del Código**: Verificado - Sin errores
+**Estado de Seguridad**: Configurado para uso interno
+**Testing**: Smoke tests y pruebas de integración completadas
 
 ## Arquitectura del Sistema
 
@@ -42,13 +47,27 @@ Cada módulo sigue el patrón MVC adaptado para APIs REST:
 
 ### Dependencias Principales
 
+**Backend:**
+
 - **Python**: 3.8+
 - **Flask**: 2.3.3
 - **SQLAlchemy**: 3.0.5
-- **PostgreSQL**: 12+
 - **Flask-Migrate**: 4.0.5
 - **Flask-Limiter**: 3.5.0
+- **PyJWT**: 2.8.0
 - **psycopg2-binary**: 2.9.7
+
+**Infraestructura:**
+
+- **PostgreSQL**: 12+ (Base de datos)
+- **Redis**: 6.0+ (Rate limiting y cache)
+- **Nginx**: 1.18+ (Reverse proxy)
+- **Gunicorn**: 21.0+ (WSGI server)
+
+**Desarrollo:**
+
+- **python-dotenv**: 1.0.0
+- **bcrypt**: 4.0+ (Hashing de contraseñas)
 
 ### Instalación
 
@@ -73,22 +92,50 @@ source venv/bin/activate
 
 ```bash
 pip install -r requirements.txt
+
+# Para producción, instalar también:
+pip install gunicorn redis psutil
 ```
 
 4. **Configurar variables de entorno**
 
 Crear archivo `.env` en el directorio backend:
 
+**Desarrollo:**
+
 ```env
+# Base de datos
 DB_HOST=100.126.196.33
 DB_PORT=5432
 DB_NAME=db_dpm
 DB_USER=dbadmin
 DB_PASSWORD=hola123
+
+# Flask
 FLASK_ENV=development
 FLASK_APP=run.py
+
+# Seguridad
 SECRET_KEY=e73f6bc7d677d03655fee282b492f2038d761cd9ded0bf7077ea181e23b39ea5
-CORS_ORIGINS=http://localhost:8081,http://localhost:19006,http://localhost:3000,http://localhost:19000
+JWT_SECRET_KEY=e73f6bc7d677d03655fee282b492f2038d761cd9ded0bf7077ea181e23b39ea5
+
+# CORS - Solo IPs internas
+CORS_ORIGINS=http://localhost:3000,http://192.168.1.100,http://192.168.1.101
+
+# Redis (opcional)
+REDIS_URL=redis://localhost:6379/0
+```
+
+**Producción:**
+
+```env
+# Configurar según infraestructura interna
+FLASK_ENV=production
+DATABASE_URL=postgresql://prod_user:prod_pass@internal_db_server/appdpm_prod
+SECRET_KEY=production-secret-key-change-this
+JWT_SECRET_KEY=production-jwt-secret-change-this
+REDIS_URL=redis://internal_redis_server:6379/0
+CORS_ORIGINS=http://192.168.1.100,http://192.168.1.101
 ```
 
 5. **Inicializar base de datos**
@@ -300,25 +347,40 @@ Los logs se almacenan en `logs/backend.log` con la siguiente información:
 - **Status de Base de Datos**: Verificación automática en startup
 - **Métricas de Rate Limiting**: Flask-Limiter integrado
 
-## Testing
+## Testing y Verificación
 
-### Verificación del Sistema
+### Estado de Testing Actual
 
-Ejecutar el sistema completo de verificación:
+✅ **Completado - 24 de Septiembre, 2025:**
+
+- **Escaneo completo de errores**: Sin errores de sintaxis encontrados
+- **Smoke tests**: Aplicación se crea e inicializa correctamente
+- **Pruebas de integración**: Endpoints responden apropiadamente
+- **Health checks**: Base de datos y servicios conectados
+- **Autenticación**: Sistema JWT funcionando
+- **CORS**: Configurado correctamente
+- **Rate limiting**: Implementado y funcional
+
+### Verificación Rápida
+
+**Health Check:**
 
 ```bash
-python test_modular_system.py
+curl http://localhost:5000/api/health
+# Respuesta esperada: {"status": "healthy", "database": "connected"}
 ```
 
-Este script verifica:
+**Test de Autenticación:**
 
-- Conectividad del servidor
-- Registro de blueprints
-- Protección de endpoints
-- Sistema de autenticación
-- Funcionalidad de todos los endpoints
+```bash
+# Login (debe retornar 400 sin credenciales)
+curl -X POST http://localhost:5000/api/auth/login
 
-### Testing Manual
+# Endpoint protegido (debe retornar 401 sin token)
+curl http://localhost:5000/api/usuarios/
+```
+
+### Herramientas de Diagnóstico
 
 ```bash
 # Verificar usuarios en BD
@@ -326,93 +388,242 @@ python check_user.py
 
 # Crear usuario de prueba
 python create_test_user.py
+
+# Generar nueva clave secreta
+python gen_secret_key.py
 ```
 
-## Despliegue
+## Despliegue a Producción (Uso Interno)
 
-### Variables de Entorno Producción
+### Requisitos de Infraestructura
 
-```env
-FLASK_ENV=production
-DATABASE_URL=postgresql://prod_user:prod_pass@db_server/prod_db
-SECRET_KEY=production-secret-key
-JWT_SECRET_KEY=production-jwt-secret
-JWT_ACCESS_TOKEN_EXPIRES=3600
-RATE_LIMIT_STORAGE_URL=redis://redis_server:6379
+- **Servidor**: Red interna únicamente
+- **Web Server**: Nginx (reverse proxy)
+- **WSGI Server**: Gunicorn
+- **Base de Datos**: PostgreSQL 12+
+- **Cache/Rate Limiting**: Redis (recomendado)
+- **Sistema Operativo**: Ubuntu 20.04+ / CentOS 8+
+
+### Configuración Gunicorn
+
+Crear `gunicorn_config.py`:
+
+```python
+import multiprocessing
+
+# Server socket - solo red interna
+bind = "127.0.0.1:5000"
+backlog = 2048
+
+# Workers
+workers = multiprocessing.cpu_count() * 2 + 1
+worker_class = "sync"
+worker_connections = 1000
+timeout = 30
+
+# Logging
+errorlog = "/var/log/gunicorn/error.log"
+accesslog = "/var/log/gunicorn/access.log"
+loglevel = "info"
+
+# Process
+proc_name = 'appdpm_backend'
+preload_app = True
 ```
 
-### Comandos de Despliegue
+### Configuración Nginx
+
+Crear `/etc/nginx/sites-available/appdpm`:
+
+```nginx
+upstream appdpm_backend {
+    server 127.0.0.1:5000 fail_timeout=0;
+}
+
+server {
+    listen 80;
+    server_name 192.168.1.100;  # IP interna del servidor
+
+    # Logs
+    access_log /var/log/nginx/appdpm_access.log;
+    error_log /var/log/nginx/appdpm_error.log;
+
+    # Rate limiting interno (permisivo)
+    limit_req_zone $binary_remote_addr zone=api:10m rate=100r/m;
+
+    location /api/ {
+        limit_req zone=api burst=20 nodelay;
+
+        proxy_pass http://appdpm_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # Timeouts para uso interno
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    location /health {
+        proxy_pass http://appdpm_backend;
+        access_log off;
+    }
+}
+```
+
+### Script de Despliegue
 
 ```bash
-# Instalar dependencias de producción
+#!/bin/bash
+set -e
+
+echo "🚀 Desplegando APPDPM Backend..."
+
+APP_DIR="/opt/appdpm/backend"
+SERVICE_NAME="appdpm-backend"
+
+# Detener servicio
+sudo systemctl stop $SERVICE_NAME
+
+# Actualizar código
+cd $APP_DIR
+git pull origin main
+
+# Instalar dependencias
+source venv/bin/activate
 pip install -r requirements.txt
 
-# Aplicar migraciones
+# Migraciones
+export FLASK_APP=run.py
+export FLASK_ENV=production
 flask db upgrade
 
-# Ejecutar con Gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 run:app
+# Reiniciar servicios
+sudo systemctl start $SERVICE_NAME
+sudo systemctl reload nginx
+
+# Verificar
+curl -f http://127.0.0.1:5000/health && echo "✅ Despliegue exitoso"
 ```
 
-## Seguridad
+## Seguridad (Configuración Interna)
 
-### Medidas Implementadas
+### Medidas de Seguridad Implementadas
 
-- **JWT Tokens**: Autenticación basada en tokens con expiración configurable
-- **Rate Limiting**: Límites de solicitudes por IP y por usuario
-- **Security Headers**: Implementación completa de headers de seguridad
+**Autenticación y Autorización:**
+
+- **JWT Tokens**: Autenticación basada en tokens (8 horas por defecto para jornada laboral)
+- **Niveles de Acceso**: Control granular por roles (Apoyo, Encargado, Admin)
+- **Hash de Contraseñas**: Almacenamiento seguro con Werkzeug
+
+**Protección de Red:**
+
+- **CORS Restringido**: Solo IPs de red interna permitidas
+- **Rate Limiting**: Configurado con Redis para uso interno (más permisivo)
+- **Security Headers**: Implementados para navegadores internos
+  - X-Frame-Options
+  - X-Content-Type-Options
   - Content Security Policy (CSP)
-  - X-Frame-Options (anti-clickjacking)
-  - X-Content-Type-Options (anti-MIME sniffing)
-  - Strict-Transport-Security (HSTS)
-- **Validación de Entrada**: Sanitización y validación de todos los datos
-- **Autorización por Roles**: Control granular de permisos por nivel de usuario
-- **Hash de Contraseñas**: Werkzeug para almacenamiento seguro
-- **CORS Configurado**: Restricción de orígenes permitidos
 
-### Validación de Integridad
+**Validación de Datos:**
 
-El sistema incluye verificación automática de:
+- **Sanitización**: Validación completa de entrada de datos
+- **Esquemas de Validación**: Validación automática por endpoint
+- **Control de Tipos**: Verificación de tipos de datos
 
-- Configuración de variables de entorno
-- Conectividad con base de datos
-- Integridad de migraciones
-- Funcionamiento de endpoints críticos
-- Estado de autenticación y autorización
+### Configuración de Red Interna
 
-### Buenas Prácticas
+**IPs Permitidas (Ejemplo):**
 
-- Usar HTTPS en producción
-- Configurar CORS apropiadamente según entorno
-- Rotar claves JWT regularmente
-- Monitorear logs de seguridad
-- Implementar backup automático de base de datos
-- Validar entrada en todos los endpoints
-- Mantener dependencias actualizadas
+```
+192.168.1.100-110  # Estaciones de trabajo
+192.168.1.200      # Servidor de aplicaciones
+192.168.1.201      # Servidor de base de datos
+```
 
-## Mantenimiento
-
-### Tareas Regulares
-
-1. **Backup de Base de Datos**: Diario automático
-2. **Limpieza de Logs**: Rotación semanal
-3. **Actualización de Dependencias**: Mensual
-4. **Revisión de Seguridad**: Trimestral
-
-### Comandos Útiles
+**Firewall Recomendado:**
 
 ```bash
-# Verificar salud del sistema
-python test_modular_system.py
+# Permitir solo red interna
+sudo ufw allow from 192.168.1.0/24 to any port 5000
+sudo ufw deny 5000
+```
 
-# Limpiar logs antiguos
-find logs/ -name "*.log" -mtime +30 -delete
+### Validación de Integridad Automática
 
+✅ **Verificaciones Implementadas:**
+
+- Conectividad con base de datos PostgreSQL
+- Disponibilidad de Redis (rate limiting)
+- Integridad de migraciones
+- Funcionamiento de endpoints críticos
+- Validación de tokens JWT
+- Estados de autenticación y autorización
+
+### Buenas Prácticas para Uso Interno
+
+1. **Monitoreo**: Logs centralizados en `/var/log/appdpm/`
+2. **Backup**: Respaldo automático diario de base de datos
+3. **Actualizaciones**: Mantener dependencias actualizadas mensualmente
+4. **Acceso**: Restringir acceso a red interna únicamente
+5. **Tokens**: Renovación automática durante jornada laboral
+6. **Redis**: Usar Redis en producción para mejor performance
+
+## Mantenimiento y Monitoreo
+
+### Cronograma de Mantenimiento
+
+| Tarea               | Frecuencia | Comando/Acción                  |
+| ------------------- | ---------- | ------------------------------- |
+| Health Check        | Diario     | `curl http://server/api/health` |
+| Backup BD           | Diario     | Script automático PostgreSQL    |
+| Rotación Logs       | Semanal    | Logrotate configurado           |
+| Limpieza Cache      | Semanal    | Redis FLUSHDB si necesario      |
+| Update Dependencias | Mensual    | `pip list --outdated`           |
+| Revisión Seguridad  | Trimestral | Auditoria interna               |
+
+### Comandos de Mantenimiento
+
+**Monitoreo del Sistema:**
+
+```bash
+# Verificar salud completa
+curl http://localhost:5000/api/health
+
+# Estado de servicios
+sudo systemctl status appdpm-backend
+sudo systemctl status nginx
+sudo systemctl status redis
+
+# Verificar logs recientes
+tail -f /var/log/appdpm/backend.log
+```
+
+**Backup y Limpieza:**
+
+```bash
+# Backup manual de base de datos
+pg_dump -h DB_HOST -U DB_USER db_dpm > backup_$(date +%Y%m%d_%H%M).sql
+
+# Limpiar logs antiguos (30+ días)
+find /var/log/appdpm/ -name "*.log" -mtime +30 -delete
+
+# Verificar espacio en disco
+df -h /var/log/appdpm/
+```
+
+**Base de Datos:**
+
+```bash
 # Verificar migraciones pendientes
 flask db show
 
-# Backup de base de datos
-pg_dump dbname > backup_$(date +%Y%m%d).sql
+# Aplicar nuevas migraciones
+flask db upgrade
+
+# Ver historial de migraciones
+flask db history
 ```
 
 ## Contribución
@@ -464,27 +675,99 @@ Revisar logs en `logs/backend.log` para detalles específicos.
 SELECT query, mean_time, calls FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;
 ```
 
-## Versioning
+## Solución de Problemas Comunes
 
-- **Versión Actual**: 2.0.0 (Modular)
-- **Versión Anterior**: 1.0.0 (Monolítica - deprecada)
+### Problemas de Conexión
+
+**Error: "Failed to create application: Missing required configuration"**
+
+```bash
+# Verificar variables de entorno
+echo $SECRET_KEY
+echo $DATABASE_URL
+
+# Cargar archivo .env manualmente
+source .env
+python run.py
+```
+
+**Error: "Redis connection failed"**
+
+```bash
+# Verificar Redis
+redis-cli ping
+# Si no responde: sudo systemctl start redis
+
+# Usar modo degradado (sin Redis)
+export REDIS_URL="memory://"
+```
+
+**Error 500 en Endpoints**
+
+```bash
+# Revisar logs detallados
+tail -f logs/backend.log
+
+# Verificar permisos de base de datos
+psql -h DB_HOST -U DB_USER -d DB_NAME -c "SELECT version();"
+```
+
+### Performance Issues
+
+**Consultas lentas:**
+
+```sql
+-- En PostgreSQL, verificar consultas lentas
+SELECT query, mean_time, calls
+FROM pg_stat_statements
+ORDER BY mean_time DESC LIMIT 10;
+```
+
+**Memoria alta:**
+
+```bash
+# Verificar uso de memoria
+ps aux | grep gunicorn
+top -p $(pgrep -d, gunicorn)
+
+# Reiniciar workers si necesario
+sudo systemctl reload appdpm-backend
+```
+
+## Versioning y Changelog
+
+**Versión Actual**: 2.1.0 (Configurado para Uso Interno)
 
 ### Changelog
 
+#### v2.1.0 (2025-09-24)
+
+- ✅ **Testing completo**: Smoke tests y pruebas de integración
+- ✅ **Configuración Redis**: Rate limiting mejorado
+- ✅ **Documentación actualizada**: Enfoque en uso interno
+- ✅ **Configuración Nginx**: Reverse proxy para producción
+- ✅ **Scripts de despliegue**: Automatización completa
+- ✅ **Monitoreo mejorado**: Health checks detallados
+
 #### v2.0.0 (2025-09-22)
 
-- Migración completa a arquitectura modular
-- Implementación de 8 módulos independientes
-- Sistema de autenticación JWT mejorado
-- Endpoints completos para todas las entidades
-- Testing automatizado implementado
-- Limpieza de código legacy
-- Verificación de integridad implementada
-- Headers de seguridad completos
-- Documentación técnica actualizada
+- Arquitectura modular completa
+- 8 módulos API independientes
+- Autenticación JWT robusta
+- Headers de seguridad implementados
+- Sistema de testing automatizado
 
 ---
 
-**Contacto**: [Información del equipo de desarrollo]
-**Repositorio**: [URL del repositorio]
-**Documentación API**: [URL de documentación Swagger - pendiente]
+## Información del Proyecto
+
+**Nombre**: Sistema DPM Backend API
+**Tipo**: Aplicación Web Interna
+**Repositorio**: `appdpm-backend`
+**Mantenedor**: Equipo de Desarrollo Interno
+**Soporte**: Red interna únicamente
+**Documentación**: Este README (actualizado regularmente)
+
+**📞 Contacto Técnico**: [Equipo de Desarrollo]
+**🔧 Soporte**: [Mesa de Ayuda Interna]
+**📄 Wiki**: [Enlace a documentación interna]
