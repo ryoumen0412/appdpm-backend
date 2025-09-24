@@ -6,15 +6,28 @@ Business logic layer for maintenance management operations.
 
 from app.extensions import db
 from app.models import Mantenciones, CentrosComunitarios
-from app.api.utils import paginate_query
+from app.api.utils import paginate_query, BaseCRUDService
 from app.api.utils.errors import ValidationError, BusinessLogicError
 from datetime import datetime
 
 
-class MantencionService:
+class MantencionService(BaseCRUDService):
     """
     Service class for maintenance management operations.
     """
+    
+    # BaseCRUDService properties
+    @property
+    def model_class(self):
+        return Mantenciones
+    
+    @property
+    def entity_name(self):
+        return 'Mantención'
+    
+    @property
+    def id_field(self):
+        return 'id_mantencion'
     
     @staticmethod
     def validate_mantencion_data(data, is_update=False):
@@ -106,10 +119,8 @@ class MantencionService:
         Raises:
             BusinessLogicError: If maintenance not found
         """
-        mantencion = Mantenciones.query.get(mantencion_id)
-        if not mantencion:
-            raise BusinessLogicError('Mantención no encontrada')
-        return mantencion
+        service = MantencionService()
+        return service.get_by_id(mantencion_id)
     
     @staticmethod
     def create_mantencion(data):
@@ -125,9 +136,16 @@ class MantencionService:
         Raises:
             ValidationError: If validation fails
         """
-        # Validate data
+        service = MantencionService()
+        return service.create(data)
+    
+    # BaseCRUDService abstract methods implementation
+    def validate_create_data(self, data):
+        """Validate data for maintenance creation."""
         MantencionService.validate_mantencion_data(data)
-        
+    
+    def build_entity(self, data):
+        """Build maintenance instance from data."""
         # Parse date if it's a string
         fecha = data['fecha']
         if isinstance(fecha, str):
@@ -142,9 +160,6 @@ class MantencionService:
             adjuntos=data.get('adjuntos'),
             quienes_realizaron=data.get('quienes_realizaron')
         )
-        
-        db.session.add(mantencion)
-        db.session.commit()
         
         return mantencion
     
@@ -164,31 +179,32 @@ class MantencionService:
             ValidationError: If validation fails
             BusinessLogicError: If business rules are violated
         """
-        mantencion = MantencionService.get_mantencion_by_id(mantencion_id)
-        
-        # Validate data
+        service = MantencionService()
+        return service.update(mantencion_id, data)
+    
+    def validate_update_data(self, data, entity):
+        """Validate data for maintenance update."""
         MantencionService.validate_mantencion_data(data, is_update=True)
-        
+    
+    def update_entity_fields(self, entity, data):
+        """Update maintenance fields with new data."""
         # Update fields
         if 'fecha' in data:
             fecha = data['fecha']
             if isinstance(fecha, str):
                 fecha = datetime.strptime(fecha, '%Y-%m-%d').date()
-            mantencion.fecha = fecha
+            entity.fecha = fecha
         
         if 'id_centro' in data:
-            mantencion.id_centro = data['id_centro']
+            entity.id_centro = data['id_centro']
         if 'detalle' in data:
-            mantencion.detalle = data['detalle']
+            entity.detalle = data['detalle']
         if 'observaciones' in data:
-            mantencion.observaciones = data['observaciones']
+            entity.observaciones = data['observaciones']
         if 'adjuntos' in data:
-            mantencion.adjuntos = data['adjuntos']
+            entity.adjuntos = data['adjuntos']
         if 'quienes_realizaron' in data:
-            mantencion.quienes_realizaron = data['quienes_realizaron']
-        
-        db.session.commit()
-        return mantencion
+            entity.quienes_realizaron = data['quienes_realizaron']
     
     @staticmethod
     def delete_mantencion(mantencion_id):
@@ -201,10 +217,8 @@ class MantencionService:
         Raises:
             BusinessLogicError: If maintenance not found or cannot be deleted
         """
-        mantencion = MantencionService.get_mantencion_by_id(mantencion_id)
-        
-        db.session.delete(mantencion)
-        db.session.commit()
+        service = MantencionService()
+        return service.delete(mantencion_id)
     
     @staticmethod
     def get_mantenciones_by_centro(centro_id):

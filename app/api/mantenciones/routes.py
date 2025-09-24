@@ -7,9 +7,11 @@ RESTful endpoints for maintenance management.
 from flask import Blueprint, request
 from app.auth_utils import apoyo_required, can_update_records, can_delete_vital_records
 from app.api.utils import (
-    success_response, error_response, created_response,
-    handle_validation_error, handle_business_logic_error, handle_db_error,
-    get_request_args, ValidationError, BusinessLogicError
+    success_response, created_response,
+    get_request_args,
+    # Decorators
+    handle_crud_errors, require_json, validate_request_data,
+    validate_pagination_params, log_api_call
 )
 from .services import MantencionService
 
@@ -18,6 +20,9 @@ mantenciones_bp = Blueprint('mantenciones', __name__, url_prefix='/api/mantencio
 
 @mantenciones_bp.route('/', methods=['GET'])
 @apoyo_required
+@handle_crud_errors("mantención", "listar")
+@validate_pagination_params
+@log_api_call
 def get_mantenciones(current_user):
     """
     Get paginated list of maintenance records with optional filters.
@@ -32,25 +37,23 @@ def get_mantenciones(current_user):
     Returns:
         JSON: Paginated maintenance list
     """
-    try:
-        args = get_request_args(request)
-        
-        result = MantencionService.get_mantenciones(
-            page=args.get('page', 1),
-            per_page=min(args.get('per_page', 10), 100),
-            centro_filter=args.get('centro'),
-            fecha_desde=args.get('fecha_desde'),
-            fecha_hasta=args.get('fecha_hasta')
-        )
-        
-        return success_response(data=result)
-        
-    except Exception as e:
-        return handle_db_error(e, "retrieving maintenance records")
+    args = get_request_args(request)
+    
+    result = MantencionService.get_mantenciones(
+        page=args.get('page', 1),
+        per_page=min(args.get('per_page', 10), 100),
+        centro_filter=args.get('centro'),
+        fecha_desde=args.get('fecha_desde'),
+        fecha_hasta=args.get('fecha_hasta')
+    )
+    
+    return success_response(data=result)
 
 
 @mantenciones_bp.route('/<int:mantencion_id>', methods=['GET'])
 @apoyo_required
+@handle_crud_errors("mantención", "obtener")
+@log_api_call
 def get_mantencion(current_user, mantencion_id):
     """
     Get maintenance record by ID.
@@ -61,22 +64,23 @@ def get_mantencion(current_user, mantencion_id):
     Returns:
         JSON: Maintenance record data
     """
-    try:
-        mantencion = MantencionService.get_mantencion_by_id(mantencion_id)
-        
-        return success_response(
-            data=mantencion.to_dict(),
-            message="Mantención encontrada"
-        )
-        
-    except BusinessLogicError as e:
-        return handle_business_logic_error(e)
-    except Exception as e:
-        return handle_db_error(e, "retrieving maintenance record")
+    mantencion = MantencionService.get_mantencion_by_id(mantencion_id)
+    
+    return success_response(
+        data=mantencion.to_dict(),
+        message="Mantención encontrada"
+    )
 
 
 @mantenciones_bp.route('/', methods=['POST'])
 @can_update_records
+@handle_crud_errors("mantención", "crear")
+@require_json
+@validate_request_data(
+    ['fecha', 'id_centro'],
+    ['detalle', 'observaciones', 'adjuntos', 'quienes_realizaron']
+)
+@log_api_call
 def create_mantencion(current_user):
     """
     Create a new maintenance record.
@@ -92,23 +96,24 @@ def create_mantencion(current_user):
     Returns:
         JSON: Created maintenance record data
     """
-    try:
-        data = request.get_json() or {}
-        mantencion = MantencionService.create_mantencion(data)
-        
-        return created_response(
-            data=mantencion.to_dict(),
-            message="Mantención creada exitosamente"
-        )
-        
-    except ValidationError as e:
-        return handle_validation_error(e)
-    except Exception as e:
-        return handle_db_error(e, "creating maintenance record")
+    data = request.get_json()
+    mantencion = MantencionService.create_mantencion(data)
+    
+    return created_response(
+        data=mantencion.to_dict(),
+        message="Mantención creada exitosamente"
+    )
 
 
 @mantenciones_bp.route('/<int:mantencion_id>', methods=['PUT'])
 @can_update_records
+@handle_crud_errors("mantención", "actualizar")
+@require_json
+@validate_request_data(
+    [],
+    ['fecha', 'id_centro', 'detalle', 'observaciones', 'adjuntos', 'quienes_realizaron']
+)
+@log_api_call
 def update_mantencion(current_user, mantencion_id):
     """
     Update a maintenance record.
@@ -121,25 +126,19 @@ def update_mantencion(current_user, mantencion_id):
     Returns:
         JSON: Updated maintenance record data
     """
-    try:
-        data = request.get_json() or {}
-        mantencion = MantencionService.update_mantencion(mantencion_id, data)
-        
-        return success_response(
-            data=mantencion.to_dict(),
-            message="Mantención actualizada exitosamente"
-        )
-        
-    except ValidationError as e:
-        return handle_validation_error(e)
-    except BusinessLogicError as e:
-        return handle_business_logic_error(e)
-    except Exception as e:
-        return handle_db_error(e, "updating maintenance record")
+    data = request.get_json()
+    mantencion = MantencionService.update_mantencion(mantencion_id, data)
+    
+    return success_response(
+        data=mantencion.to_dict(),
+        message="Mantención actualizada exitosamente"
+    )
 
 
 @mantenciones_bp.route('/<int:mantencion_id>', methods=['DELETE'])
 @can_delete_vital_records
+@handle_crud_errors("mantención", "eliminar")
+@log_api_call
 def delete_mantencion(current_user, mantencion_id):
     """
     Delete a maintenance record.
@@ -150,21 +149,17 @@ def delete_mantencion(current_user, mantencion_id):
     Returns:
         JSON: Deletion confirmation
     """
-    try:
-        MantencionService.delete_mantencion(mantencion_id)
-        
-        return success_response(
-            message="Mantención eliminada exitosamente"
-        )
-        
-    except BusinessLogicError as e:
-        return handle_business_logic_error(e)
-    except Exception as e:
-        return handle_db_error(e, "deleting maintenance record")
+    MantencionService.delete_mantencion(mantencion_id)
+    
+    return success_response(
+        message="Mantención eliminada exitosamente"
+    )
 
 
 @mantenciones_bp.route('/centro/<int:centro_id>', methods=['GET'])
 @apoyo_required
+@handle_crud_errors("mantenciones por centro", "obtener")
+@log_api_call
 def get_mantenciones_by_centro(current_user, centro_id):
     """
     Get all maintenance records for a specific center.
@@ -175,13 +170,9 @@ def get_mantenciones_by_centro(current_user, centro_id):
     Returns:
         JSON: List of maintenance records for the center
     """
-    try:
-        mantenciones = MantencionService.get_mantenciones_by_centro(centro_id)
-        
-        return success_response(
-            data=[m.to_dict() for m in mantenciones],
-            message=f"Mantenciones del centro {centro_id} obtenidas exitosamente"
-        )
-        
-    except Exception as e:
-        return handle_db_error(e, "retrieving center maintenance records")
+    mantenciones = MantencionService.get_mantenciones_by_centro(centro_id)
+    
+    return success_response(
+        data=[m.to_dict() for m in mantenciones],
+        message=f"Mantenciones del centro {centro_id} obtenidas exitosamente"
+    )

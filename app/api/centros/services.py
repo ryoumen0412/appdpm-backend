@@ -6,15 +6,28 @@ Business logic layer for community center management operations.
 
 from app.extensions import db
 from app.models import CentrosComunitarios
-from app.api.utils import paginate_query
+from app.api.utils import paginate_query, BaseCRUDService
 from app.api.utils.errors import ValidationError, BusinessLogicError
 import re
 
 
-class CentroService:
+class CentroService(BaseCRUDService):
     """
     Service class for community center management operations.
     """
+    
+    # BaseCRUDService properties
+    @property
+    def model_class(self):
+        return CentrosComunitarios
+    
+    @property
+    def entity_name(self):
+        return 'Centro comunitario'
+    
+    @property
+    def id_field(self):
+        return 'id_centro'
     
     @staticmethod
     def validate_centro_data(data, is_update=False):
@@ -123,10 +136,8 @@ class CentroService:
         Raises:
             BusinessLogicError: If center not found
         """
-        centro = CentrosComunitarios.query.get(centro_id)
-        if not centro:
-            raise BusinessLogicError('Centro comunitario no encontrado')
-        return centro
+        service = CentroService()
+        return service.get_by_id(centro_id)
     
     @staticmethod
     def create_centro(data):
@@ -143,25 +154,27 @@ class CentroService:
             ValidationError: If validation fails
             BusinessLogicError: If business rules are violated
         """
+        service = CentroService()
+        return service.create(data)
+    
+    # BaseCRUDService abstract methods implementation
+    def validate_create_data(self, data):
+        """Validate data for center creation."""
         # Validate data
         CentroService.validate_centro_data(data)
         
         # Check if center name already exists
-        existing_centro = CentrosComunitarios.query.filter_by(
-            nombre=data['nombre']
-        ).first()
-        if existing_centro:
+        if not self.check_unique_field('nombre', data['nombre']):
             raise BusinessLogicError('Ya existe un centro con este nombre')
-        
+    
+    def build_entity(self, data):
+        """Build center instance from data."""
         # Create center
         centro = CentrosComunitarios(
             nombre=data['nombre'],
             direccion=data.get('direccion'),
             sector=data.get('sector')
         )
-        
-        db.session.add(centro)
-        db.session.commit()
         
         return centro
     
@@ -181,29 +194,28 @@ class CentroService:
             ValidationError: If validation fails
             BusinessLogicError: If business rules are violated
         """
-        centro = CentroService.get_centro_by_id(centro_id)
-        
+        service = CentroService()
+        return service.update(centro_id, data)
+    
+    def validate_update_data(self, data, entity):
+        """Validate data for center update."""
         # Validate data
         CentroService.validate_centro_data(data, is_update=True)
         
         # Check name uniqueness if changing
-        if 'nombre' in data and data['nombre'] != centro.nombre:
-            existing = CentrosComunitarios.query.filter_by(
-                nombre=data['nombre']
-            ).first()
-            if existing and existing.id != centro_id:
+        if 'nombre' in data and data['nombre'] != entity.nombre:
+            if not self.check_unique_field('nombre', data['nombre'], exclude_id=entity.id_centro):
                 raise BusinessLogicError('Ya existe un centro con este nombre')
-        
+    
+    def update_entity_fields(self, entity, data):
+        """Update center fields with new data."""
         # Update fields
         if 'nombre' in data:
-            centro.nombre = data['nombre']
+            entity.nombre = data['nombre']
         if 'direccion' in data:
-            centro.direccion = data['direccion']
+            entity.direccion = data['direccion']
         if 'sector' in data:
-            centro.sector = data['sector']
-        
-        db.session.commit()
-        return centro
+            entity.sector = data['sector']
     
     @staticmethod
     def delete_centro(centro_id):
@@ -216,13 +228,14 @@ class CentroService:
         Raises:
             BusinessLogicError: If business rules are violated
         """
-        centro = CentroService.get_centro_by_id(centro_id)
-        
+        service = CentroService()
+        return service.delete(centro_id)
+    
+    def validate_delete(self, entity):
+        """Validate if center can be deleted."""
         # Check for related records (activities, etc.)
         # For now, allow deletion (cascade will handle relationships)
-        
-        db.session.delete(centro)
-        db.session.commit()
+        pass
     
     @staticmethod
     def get_sectores_list():

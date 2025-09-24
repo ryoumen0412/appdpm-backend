@@ -11,9 +11,9 @@ from app.api.utils import (
     handle_validation_error, handle_business_logic_error, handle_db_error,
     get_request_args, ValidationError, BusinessLogicError
 )
-from .services import (
-    ServicioService, MantencionService, TrabajadorApoyoService, RelacionService
-)
+from .services import ServicioService, RelacionService
+from app.api.mantenciones.services import MantencionService
+from app.api.trabajadores.services import TrabajadorApoyoService
 
 servicios_bp = Blueprint('servicios', __name__, url_prefix='/api/servicios')
 

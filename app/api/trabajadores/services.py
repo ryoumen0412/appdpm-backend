@@ -6,15 +6,28 @@ Business logic layer for support worker management operations.
 
 from app.extensions import db
 from app.models import TrabajadoresApoyo, CentrosComunitarios
-from app.api.utils import paginate_query
+from app.api.utils import paginate_query, BaseCRUDService
 from app.api.utils.errors import ValidationError, BusinessLogicError
 import re
 
 
-class TrabajadorApoyoService:
+class TrabajadorApoyoService(BaseCRUDService):
     """
     Service class for support worker management operations.
     """
+    
+    # BaseCRUDService properties
+    @property
+    def model_class(self):
+        return TrabajadoresApoyo
+    
+    @property
+    def entity_name(self):
+        return 'Trabajador de apoyo'
+    
+    @property
+    def id_field(self):
+        return 'rut'
     
     @staticmethod
     def validate_trabajador_data(data, is_update=False):
@@ -117,10 +130,8 @@ class TrabajadorApoyoService:
         # Clean RUT
         rut_clean = rut.replace('.', '').replace('-', '')
         
-        trabajador = TrabajadoresApoyo.query.get(rut_clean)
-        if not trabajador:
-            raise BusinessLogicError('Trabajador de apoyo no encontrado')
-        return trabajador
+        service = TrabajadorApoyoService()
+        return service.get_by_id(rut_clean)
     
     @staticmethod
     def create_trabajador(data):
@@ -137,30 +148,32 @@ class TrabajadorApoyoService:
             ValidationError: If validation fails
             BusinessLogicError: If business rules are violated
         """
+        service = TrabajadorApoyoService()
+        return service.create(data)
+    
+    # BaseCRUDService abstract methods implementation
+    def validate_create_data(self, data):
+        """Validate data for worker creation."""
         # Validate data
         TrabajadorApoyoService.validate_trabajador_data(data)
         
         # Clean RUT
         rut_clean = data['rut'].replace('.', '').replace('-', '')
+        data['rut'] = rut_clean  # Update with cleaned RUT
         
         # Check if worker already exists
-        existing_trabajador = TrabajadoresApoyo.query.get(rut_clean)
-        if existing_trabajador:
+        if not self.check_unique_field('rut', rut_clean):
             raise BusinessLogicError('Ya existe un trabajador con este RUT')
-        
-        # Create worker
-        trabajador = TrabajadoresApoyo(
-            rut=rut_clean,
+    
+    def build_entity(self, data):
+        """Build worker instance from data."""
+        return TrabajadoresApoyo(
+            rut=data['rut'],
             nombre=data['nombre'],
             apellidos=data.get('apellidos'),
             cargo=data.get('cargo'),
             id_centro=data.get('id_centro')
         )
-        
-        db.session.add(trabajador)
-        db.session.commit()
-        
-        return trabajador
     
     @staticmethod
     def update_trabajador(rut, data):
@@ -178,23 +191,27 @@ class TrabajadorApoyoService:
             ValidationError: If validation fails
             BusinessLogicError: If business rules are violated
         """
-        trabajador = TrabajadorApoyoService.get_trabajador_by_rut(rut)
+        # Clean RUT
+        rut_clean = rut.replace('.', '').replace('-', '')
         
-        # Validate data
+        service = TrabajadorApoyoService()
+        return service.update(rut_clean, data)
+    
+    def validate_update_data(self, data, entity):
+        """Validate data for worker update."""
         TrabajadorApoyoService.validate_trabajador_data(data, is_update=True)
-        
+    
+    def update_entity_fields(self, entity, data):
+        """Update worker fields with new data."""
         # Update fields (RUT cannot be changed)
         if 'nombre' in data:
-            trabajador.nombre = data['nombre']
+            entity.nombre = data['nombre']
         if 'apellidos' in data:
-            trabajador.apellidos = data['apellidos']
+            entity.apellidos = data['apellidos']
         if 'cargo' in data:
-            trabajador.cargo = data['cargo']
+            entity.cargo = data['cargo']
         if 'id_centro' in data:
-            trabajador.id_centro = data['id_centro']
-        
-        db.session.commit()
-        return trabajador
+            entity.id_centro = data['id_centro']
     
     @staticmethod
     def delete_trabajador(rut):
@@ -207,10 +224,11 @@ class TrabajadorApoyoService:
         Raises:
             BusinessLogicError: If worker not found or cannot be deleted
         """
-        trabajador = TrabajadorApoyoService.get_trabajador_by_rut(rut)
+        # Clean RUT
+        rut_clean = rut.replace('.', '').replace('-', '')
         
-        db.session.delete(trabajador)
-        db.session.commit()
+        service = TrabajadorApoyoService()
+        return service.delete(rut_clean)
     
     @staticmethod
     def get_trabajadores_by_centro(centro_id):

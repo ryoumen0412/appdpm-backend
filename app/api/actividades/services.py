@@ -1,23 +1,33 @@
 """
 Activities Services
 
-Business        # Validate name length
-        if 'nombre' in data and data['nombre']:
-            if len(data['nombre']) > 150:
-                raise ValidationError('Nombre de actividad no puede exceder 150 caracteres')r activity and workshop management operations.
+Business logic layer for activity and workshop management operations.
 """
 
 from datetime import datetime
 from app.extensions import db
 from app.models import Actividades, Talleres, CentrosComunitarios, PersonasACargo
-from app.api.utils import paginate_query
+from app.api.utils import paginate_query, BaseCRUDService
 from app.api.utils.errors import ValidationError, BusinessLogicError
 
 
-class ActividadService:
+class ActividadService(BaseCRUDService):
     """
     Service class for activity management operations.
     """
+    
+    # BaseCRUDService properties
+    @property
+    def model_class(self):
+        return Actividades
+    
+    @property
+    def entity_name(self):
+        return 'Actividad'
+    
+    @property
+    def id_field(self):
+        return 'id_actividad'
     
     @staticmethod
     def validate_actividad_data(data, is_update=False):
@@ -272,10 +282,23 @@ class ActividadService:
         ).all()
 
 
-class TallerService:
+class TallerService(BaseCRUDService):
     """
     Service class for workshop management operations.
     """
+    
+    # BaseCRUDService properties
+    @property
+    def model_class(self):
+        return Talleres
+    
+    @property
+    def entity_name(self):
+        return 'Taller'
+    
+    @property
+    def id_field(self):
+        return 'id_taller'
     
     @staticmethod
     def validate_taller_data(data, is_update=False):
@@ -346,10 +369,8 @@ class TallerService:
         Raises:
             BusinessLogicError: If workshop not found
         """
-        taller = Talleres.query.get(taller_id)
-        if not taller:
-            raise BusinessLogicError('Taller no encontrado')
-        return taller
+        service = TallerService()
+        return service.get_by_id(taller_id)
     
     @staticmethod
     def create_taller(data):
@@ -362,10 +383,16 @@ class TallerService:
         Returns:
             Talleres: Created workshop instance
         """
-        # Validate data
+        service = TallerService()
+        return service.create(data)
+    
+    # BaseCRUDService abstract methods implementation
+    def validate_create_data(self, data):
+        """Validate data for workshop creation."""
         TallerService.validate_taller_data(data)
-        
-        # Create workshop
+    
+    def build_entity(self, data):
+        """Build workshop instance from data."""
         # Parse dates if they are strings
         fecha_inicio = data['fecha_inicio']
         if isinstance(fecha_inicio, str):
@@ -383,9 +410,6 @@ class TallerService:
             observaciones=data.get('observaciones')
         )
         
-        db.session.add(taller)
-        db.session.commit()
-        
         return taller
     
     @staticmethod
@@ -400,37 +424,38 @@ class TallerService:
         Returns:
             Talleres: Updated workshop instance
         """
-        taller = TallerService.get_taller_by_id(taller_id)
-        
-        # Validate data
+        service = TallerService()
+        return service.update(taller_id, data)
+    
+    def validate_update_data(self, data, entity):
+        """Validate data for workshop update."""
         TallerService.validate_taller_data(data, is_update=True)
-        
+    
+    def update_entity_fields(self, entity, data):
+        """Update workshop fields with new data."""
         # Update fields
         if 'nombre' in data:
-            taller.nombre = data['nombre']
+            entity.nombre = data['nombre']
         if 'fecha_inicio' in data:
             fecha_inicio = data['fecha_inicio']
             if isinstance(fecha_inicio, str):
                 fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
-            taller.fecha_inicio = fecha_inicio
+            entity.fecha_inicio = fecha_inicio
         if 'fecha_termino' in data:
             fecha_termino = data['fecha_termino']
             if fecha_termino and isinstance(fecha_termino, str):
                 fecha_termino = datetime.strptime(fecha_termino, '%Y-%m-%d').date()
-            taller.fecha_termino = fecha_termino
+            entity.fecha_termino = fecha_termino
         if 'persona_a_cargo' in data:
-            taller.persona_a_cargo = data['persona_a_cargo']
+            entity.persona_a_cargo = data['persona_a_cargo']
         if 'observaciones' in data:
-            taller.observaciones = data['observaciones']
+            entity.observaciones = data['observaciones']
         if 'descripcion_taller' in data:
-            taller.descripcion_taller = data['descripcion_taller']
+            entity.descripcion_taller = data['descripcion_taller']
         if 'id_actividad' in data:
-            taller.id_actividad = data['id_actividad']
+            entity.id_actividad = data['id_actividad']
         if 'id_persona_a_cargo' in data:
-            taller.id_persona_a_cargo = data['id_persona_a_cargo']
-        
-        db.session.commit()
-        return taller
+            entity.id_persona_a_cargo = data['id_persona_a_cargo']
     
     @staticmethod
     def delete_taller(taller_id):
@@ -440,7 +465,5 @@ class TallerService:
         Args:
             taller_id: Workshop ID to delete
         """
-        taller = TallerService.get_taller_by_id(taller_id)
-        
-        db.session.delete(taller)
-        db.session.commit()
+        service = TallerService()
+        return service.delete(taller_id)
