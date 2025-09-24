@@ -12,6 +12,7 @@ from app.api.utils import (
     handle_validation_error, handle_business_logic_error, handle_db_error,
     ValidationError, BusinessLogicError
 )
+from app.api.utils.decorators import validate_rut_parameter
 from .services import AuthService
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -19,6 +20,7 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/login', methods=['POST'])
 @limiter.limit("5 per minute")
+@validate_rut_parameter
 def login():
     """
     Authenticate user in the system.

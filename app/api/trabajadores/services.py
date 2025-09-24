@@ -117,9 +117,10 @@ class TrabajadorApoyoService(BaseCRUDService):
     def get_trabajador_by_rut(rut):
         """
         Get support worker by RUT.
+        Soporta formatos XXXXXXX-X y XXXXXXXX-X
         
         Args:
-            rut: Worker RUT
+            rut: Worker RUT (con guión)
             
         Returns:
             TrabajadoresApoyo: Worker instance
@@ -127,11 +128,27 @@ class TrabajadorApoyoService(BaseCRUDService):
         Raises:
             BusinessLogicError: If worker not found
         """
-        # Clean RUT
-        rut_clean = rut.replace('.', '').replace('-', '')
+        from app.auth_utils import normalize_rut
+        import logging
         
+        logger = logging.getLogger(__name__)
+        
+        # Normalize and validate RUT format
+        normalized_rut = normalize_rut(rut)
+        if not normalized_rut:
+            logger.warning(f"Formato de RUT inválido: {rut}")
+            raise BusinessLogicError('Formato de RUT inválido')
+        
+        # Search worker by normalized RUT (which is the primary key)
         service = TrabajadorApoyoService()
-        return service.get_by_id(rut_clean)
+        
+        try:
+            trabajador = service.get_by_id(normalized_rut)
+            logger.info(f"Trabajador encontrado: {normalized_rut}")
+            return trabajador
+        except BusinessLogicError:
+            logger.warning(f"Trabajador con RUT {normalized_rut} no encontrado")
+            raise BusinessLogicError('Trabajador de apoyo no encontrado')
     
     @staticmethod
     def create_trabajador(data):

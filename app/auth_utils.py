@@ -9,11 +9,85 @@ de autenticación y otras funciones relacionadas con la seguridad.
 
 import jwt
 import secrets
+import re
+import logging
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import current_app, request, jsonify, session
 from app.extensions import db
 from app.models import Usuario
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# VALIDACIÓN DE RUT
+# =============================================================================
+
+def validate_rut_format(rut):
+    """
+    Validar que el RUT tenga el formato correcto.
+    Formatos aceptados:
+    - XXXXXXXX-X (8 dígitos + guión + dígito verificador)
+    - XXXXXXX-X (7 dígitos + guión + dígito verificador)
+    
+    Args:
+        rut (str): RUT a validar
+        
+    Returns:
+        bool: True si el formato es válido, False en caso contrario
+    """
+    if not rut or not isinstance(rut, str):
+        return False
+    
+    # Patrón que acepta 7 u 8 dígitos + guión + dígito verificador (0-9 o k/K)
+    pattern = r'^\d{7,8}-[\dkK]$'
+    
+    is_valid = bool(re.match(pattern, rut.strip()))
+    
+    if not is_valid:
+        logger.debug(f"Formato de RUT inválido: {rut}")
+    
+    return is_valid
+
+
+def normalize_rut(rut):
+    """
+    Normalizar RUT para consistencia (mantener formato original pero limpiar espacios)
+    
+    Args:
+        rut (str): RUT a normalizar
+        
+    Returns:
+        str: RUT normalizado o None si es inválido
+    """
+    if not rut:
+        return None
+    
+    # Remover espacios en blanco
+    normalized = rut.strip()
+    
+    # Validar formato
+    if not validate_rut_format(normalized):
+        return None
+    
+    return normalized
+
+
+def is_valid_rut_length(rut_without_dash):
+    """
+    Verificar que la parte numérica del RUT tenga longitud válida
+    
+    Args:
+        rut_without_dash (str): Parte numérica del RUT sin el guión
+        
+    Returns:
+        bool: True si la longitud es válida (7 u 8 dígitos)
+    """
+    if not rut_without_dash.isdigit():
+        return False
+    
+    return len(rut_without_dash) in [7, 8]
 
 
 # =============================================================================

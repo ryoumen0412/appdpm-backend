@@ -11,6 +11,7 @@ from app.api.utils import (
     handle_validation_error, handle_business_logic_error, handle_db_error,
     get_request_args, ValidationError, BusinessLogicError
 )
+from app.api.utils.decorators import validate_rut_parameter
 from .services import ServicioService, RelacionService
 from app.api.mantenciones.services import MantencionService
 from app.api.trabajadores.services import TrabajadorApoyoService
@@ -168,8 +169,9 @@ def get_mantenciones(current_user):
     Query Parameters:
         page (int): Page number (default: 1)
         per_page (int): Items per page (default: 10, max: 100)
-        nombre (str): Filter by maintenance name
-        fecha (str): Filter by date (YYYY-MM-DD)
+        centro (int): Filter by center ID
+        fecha_desde (str): Filter maintenance from this date (YYYY-MM-DD)
+        fecha_hasta (str): Filter maintenance until this date (YYYY-MM-DD)
         
     Returns:
         JSON: Paginated maintenances list
@@ -180,8 +182,9 @@ def get_mantenciones(current_user):
         result = MantencionService.get_mantenciones(
             page=args.get('page', 1),
             per_page=min(args.get('per_page', 10), 100),
-            nombre_filter=args.get('nombre'),
-            fecha_filter=args.get('fecha')
+            centro_filter=args.get('centro'),
+            fecha_desde=args.get('fecha_desde'),
+            fecha_hasta=args.get('fecha_hasta')
         )
         
         return success_response(data=result)
@@ -321,7 +324,7 @@ def get_trabajadores_apoyo(current_user):
     try:
         args = get_request_args(request)
         
-        result = TrabajadorApoyoService.get_trabajadores_apoyo(
+        result = TrabajadorApoyoService.get_trabajadores(
             page=args.get('page', 1),
             per_page=min(args.get('per_page', 10), 100),
             nombre_filter=args.get('nombre'),
@@ -334,20 +337,21 @@ def get_trabajadores_apoyo(current_user):
         return handle_db_error(e, "retrieving support workers")
 
 
-@servicios_bp.route('/trabajadores-apoyo/<int:trabajador_id>', methods=['GET'])
+@servicios_bp.route('/trabajadores-apoyo/<string:trabajador_rut>', methods=['GET'])
 @apoyo_required
-def get_trabajador_apoyo(current_user, trabajador_id):
+@validate_rut_parameter
+def get_trabajador_apoyo(current_user, trabajador_rut):
     """
-    Get support worker by ID.
+    Get support worker by RUT.
     
     Path Parameters:
-        trabajador_id (int): Worker ID
+        trabajador_rut (string): Worker RUT
         
     Returns:
         JSON: Worker data
     """
     try:
-        trabajador = TrabajadorApoyoService.get_trabajador_by_id(trabajador_id)
+        trabajador = TrabajadorApoyoService.get_trabajador_by_rut(trabajador_rut)
         return success_response(data=trabajador.to_dict())
         
     except BusinessLogicError as e:

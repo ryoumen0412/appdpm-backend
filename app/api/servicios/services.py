@@ -77,10 +77,10 @@ class ServicioService(BaseCRUDService):
         
         # Apply filters
         if nombre_filter:
-            query = query.filter(Servicios.nombre_servicio.ilike(f'%{nombre_filter}%'))
+            query = query.filter(Servicios.nombre.ilike(f'%{nombre_filter}%'))
         
         # Order by name
-        query = query.order_by(Servicios.nombre_servicio)
+        query = query.order_by(Servicios.nombre)
         
         return paginate_query(query, page, per_page)
     

@@ -8,7 +8,7 @@ from app.extensions import db
 from app.models import Usuario
 from app.api.utils.errors import ValidationError, BusinessLogicError
 from app.auth_utils import (
-    validate_rut, clean_rut, validate_password_strength,
+    validate_rut_format, normalize_rut, validate_password_strength,
     login_user as auth_login_user, logout_user as auth_logout_user
 )
 
@@ -37,13 +37,13 @@ class AuthService:
         if not rut_usuario or not password:
             raise ValidationError('RUT y contraseña son requeridos')
         
-        # Clean and validate RUT
-        rut = clean_rut(rut_usuario)
-        if not validate_rut(rut):
-            raise ValidationError('Formato de RUT inválido')
+        # Normalize and validate RUT format
+        normalized_rut = normalize_rut(rut_usuario)
+        if not normalized_rut:
+            raise ValidationError('Formato de RUT inválido. Use formato XXXXXXX-X o XXXXXXXX-X')
         
         # Find user by RUT
-        usuario = Usuario.query.filter_by(rut_usuario=rut).first()
+        usuario = Usuario.query.filter_by(rut_usuario=normalized_rut).first()
         if not usuario:
             raise BusinessLogicError('Credenciales incorrectas')
         
@@ -76,13 +76,13 @@ class AuthService:
             if not data.get(field):
                 raise ValidationError(f'{field} es requerido')
         
-        # Clean and validate RUT
-        rut = clean_rut(data['rut_usuario'])
-        if not validate_rut(rut):
-            raise ValidationError('Formato de RUT inválido')
+        # Normalize and validate RUT format
+        normalized_rut = normalize_rut(data['rut_usuario'])
+        if not normalized_rut:
+            raise ValidationError('Formato de RUT inválido. Use formato XXXXXXX-X o XXXXXXXX-X')
         
         # Check if user already exists
-        if Usuario.query.filter_by(rut_usuario=rut).first():
+        if Usuario.query.filter_by(rut_usuario=normalized_rut).first():
             raise BusinessLogicError('Ya existe un usuario con este RUT')
         
         # Validate password strength
@@ -96,7 +96,7 @@ class AuthService:
         
         # Create new user
         usuario = Usuario(
-            rut_usuario=rut,
+            rut_usuario=normalized_rut,
             user_usuario=data['user_usuario'],
             nivel_usuario=data['nivel_usuario']
         )

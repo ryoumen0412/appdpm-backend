@@ -321,3 +321,58 @@ def handle_file_upload_errors(allowed_extensions=None, max_file_size=None):
             return f(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def validate_rut_parameter(f):
+    """
+    Decorador para validar parámetros RUT en rutas
+    Soporta formatos XXXXXXXX-X y XXXXXXX-X
+    
+    Usage:
+        @validate_rut_parameter
+        def get_user_by_rut(rut_usuario):
+            # La función recibe el RUT ya validado y normalizado
+            return result
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from app.auth_utils import validate_rut_format, normalize_rut
+        
+        # Validar parámetros RUT en la URL
+        for key, value in kwargs.items():
+            if 'rut' in key.lower() and value:
+                normalized = normalize_rut(value)
+                if not normalized:
+                    logging.warning(f"RUT inválido en parámetro URL {key}: '{value}'")
+                    return jsonify({
+                        'success': False,
+                        'error': f'Formato de RUT inválido: {value}',
+                        'message': 'Use formato XXXXXXX-X o XXXXXXXX-X',
+                        'error_code': 'INVALID_RUT_FORMAT'
+                    }), 400
+                
+                # Actualizar kwargs con RUT normalizado
+                kwargs[key] = normalized
+        
+        # Validar RUT en el body de la request
+        if request.is_json:
+            data = request.get_json()
+            if data:
+                rut_fields = ['rut_usuario', 'rut', 'trabajador_rut', 'persona_rut']
+                for field in rut_fields:
+                    if field in data and data[field]:
+                        normalized = normalize_rut(data[field])
+                        if not normalized:
+                            logging.warning(f"RUT inválido en campo {field}: '{data[field]}'")
+                            return jsonify({
+                                'success': False,
+                                'error': f'Formato de RUT inválido en {field}: {data[field]}',
+                                'message': 'Use formato XXXXXXX-X o XXXXXXXX-X',
+                                'error_code': 'INVALID_RUT_FORMAT'
+                            }), 400
+                        
+                        # Actualizar data con RUT normalizado
+                        data[field] = normalized
+        
+        return f(*args, **kwargs)
+    return decorated_function
