@@ -45,15 +45,13 @@ def _init_extensions(app):
         limiter.init_app(app)
         
         cors.init_app(app, resources={
-            r"/api/*": {
-                "origins": app.config.get('CORS_ORIGINS', ['https://localhost:3000']),
+            r"/*": {
+                "origins": app.config.get('CORS_ORIGINS', ['http://localhost:3000']),
                 "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
                 "allow_headers": ["Content-Type", "Authorization"],
                 "support_credentials": True
             }
         })
-        
-        limiter.init_app(app)
     
     except Exception as e:
         raise RuntimeError(f'Extension initialization failed: {str(e)}')
