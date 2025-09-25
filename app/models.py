@@ -71,7 +71,7 @@ class Usuario(db.Model):
         """
         if len(password) > 128:  # Límite razonable para contraseña original
             raise ValueError("La contraseña no puede exceder 128 caracteres")
-        self.passwd_usuario = generate_password_hash(password)
+        self.passwd_usuario = generate_password_hash(password, method='scrypt')
     
     def check_password(self, password):
         """
