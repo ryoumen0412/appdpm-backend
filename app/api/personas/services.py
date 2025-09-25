@@ -8,7 +8,7 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.models import PersonasMayores, PersonasACargo
 from app.api.utils.errors import ValidationError, BusinessLogicError
-from app.auth_utils import validate_rut, clean_rut
+from app.auth_utils import validate_rut, normalize_rut
 from datetime import datetime, date
 
 
@@ -69,10 +69,10 @@ class PersonasMayoresService:
         
         # Validate RUT if provided
         if 'rut' in data:
-            rut = clean_rut(data['rut'])
-            if not validate_rut(rut):
+            rut = normalize_rut(data['rut'])
+            if not rut:
                 raise ValidationError('Formato de RUT inválido', field='rut')
-            data['rut'] = rut  # Update with cleaned RUT
+            data['rut'] = rut  # Update with normalized RUT
         
         # Validate email format if provided
         if data.get('email'):
@@ -186,8 +186,8 @@ class PersonasACargoService:
         
         # Validate RUT if provided
         if 'rut' in data:
-            rut = clean_rut(data['rut'])
-            if not validate_rut(rut):
+            rut = normalize_rut(data['rut'])
+            if not rut:
                 raise ValidationError('Formato de RUT inválido', field='rut')
             data['rut'] = rut
         

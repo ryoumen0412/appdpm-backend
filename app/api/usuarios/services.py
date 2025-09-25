@@ -8,7 +8,7 @@ from app.extensions import db
 from app.models import Usuario
 from app.api.utils import paginate_query, BaseCRUDService
 from app.api.utils.errors import ValidationError, BusinessLogicError
-from app.auth_utils import validate_rut, clean_rut, validate_password_strength
+from app.auth_utils import validate_rut, normalize_rut, validate_password_strength
 
 
 class UsuarioService(BaseCRUDService):
@@ -103,11 +103,11 @@ class UsuarioService(BaseCRUDService):
         required_fields = ['rut_usuario', 'user_usuario', 'password', 'nivel_usuario']
         self.validate_required_fields(data, required_fields)
         
-        # Clean and validate RUT
-        rut = clean_rut(data['rut_usuario'])
-        if not validate_rut(rut):
+        # Normalize and validate RUT
+        rut = normalize_rut(data['rut_usuario'])
+        if not rut:
             raise ValidationError('Formato de RUT inválido')
-        data['rut_usuario'] = rut  # Update with cleaned RUT
+        data['rut_usuario'] = rut  # Update with normalized RUT
         
         # Check if user already exists by RUT
         if not self.check_unique_field('rut_usuario', rut):

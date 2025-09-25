@@ -21,7 +21,7 @@ Modelos incluidos:
 
 from app.extensions import db
 from datetime import datetime, date
-from werkzeug.security import generate_password_hash, check_password_hash
+import bcrypt
 
 # =============================================================================
 # MODELO: USUARIOS (AUTENTICACIÓN)
@@ -61,7 +61,7 @@ class Usuario(db.Model):
     
     def set_password(self, password):
         """
-        Generar hash seguro de la contraseña usando Werkzeug.
+        Generar hash seguro de la contraseña usando bcrypt.
         
         Args:
             password (str): Contraseña en texto plano
@@ -71,11 +71,14 @@ class Usuario(db.Model):
         """
         if len(password) > 128:  # Límite razonable para contraseña original
             raise ValueError("La contraseña no puede exceder 128 caracteres")
-        self.passwd_usuario = generate_password_hash(password, method='scrypt')
+        # Generar hash bcrypt con rounds=12 (balance entre seguridad y rendimiento)
+        hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12))
+        self.passwd_usuario = hashed.decode('utf-8')
     
     def check_password(self, password):
         """
         Verificar contraseña contra el hash almacenado.
+        Soporta tanto hashes bcrypt como legacy de Werkzeug (pbkdf2, scrypt).
         
         Args:
             password (str): Contraseña en texto plano a verificar
@@ -83,7 +86,19 @@ class Usuario(db.Model):
         Returns:
             bool: True si la contraseña es correcta, False en caso contrario
         """
-        return check_password_hash(self.passwd_usuario, password)
+        # Si el hash empieza con $2, es bcrypt
+        if self.passwd_usuario.startswith('$2'):
+            return bcrypt.checkpw(password.encode('utf-8'), self.passwd_usuario.encode('utf-8'))
+        else:
+            # Para hashes legacy de Werkzeug (pbkdf2, scrypt, etc.)
+            # Importamos werkzeug solo cuando es necesario para compatibilidad
+            from werkzeug.security import check_password_hash
+            try:
+                return check_password_hash(self.passwd_usuario, password)
+            except Exception:
+                # Si Werkzeug falla, probamos convertir a bcrypt
+                # Esto podría pasar en migraciones futuras
+                return False
     
     def update_last_login(self):
         """
