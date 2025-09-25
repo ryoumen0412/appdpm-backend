@@ -8,7 +8,7 @@ from app.extensions import db
 from app.models import Usuario
 from app.api.utils.errors import ValidationError, BusinessLogicError
 from app.auth_utils import (
-    validate_rut_format, normalize_rut, validate_password_strength,
+    validate_rut_format, normalize_rut, clean_rut, validate_password_strength,
     login_user as auth_login_user, logout_user as auth_logout_user
 )
 
@@ -42,8 +42,11 @@ class AuthService:
         if not normalized_rut:
             raise ValidationError('Formato de RUT inválido. Use formato XXXXXXX-X o XXXXXXXX-X')
         
+        # Clean RUT for database lookup (remove dashes and dots)
+        clean_rut_for_db = clean_rut(normalized_rut)
+        
         # Find user by RUT
-        usuario = Usuario.query.filter_by(rut_usuario=normalized_rut).first()
+        usuario = Usuario.query.filter_by(rut_usuario=clean_rut_for_db).first()
         if not usuario:
             raise BusinessLogicError('Credenciales incorrectas')
         
