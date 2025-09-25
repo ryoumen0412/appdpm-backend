@@ -10,7 +10,7 @@ API REST interna para la gestión del Departamento de Personas Mayores (DPM). Si
 
 ## Estado del Sistema
 
-**Estado Actual**: Operativo ✅
+**Estado Actual**: Operativo
 **Última Verificación**: 24 de Septiembre, 2025
 **Integridad del Código**: Verificado - Sin errores
 **Estado de Seguridad**: Configurado para uso interno
@@ -78,7 +78,7 @@ git clone <repository-url>
 cd appdpm-clone/backend
 ```
 
-2. **Crear entorno virtual**
+1. **Crear entorno virtual**
 
 ```bash
 python -m venv venv
@@ -88,7 +88,7 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-3. **Instalar dependencias**
+2. **Instalar dependencias**
 
 ```bash
 pip install -r requirements.txt
@@ -97,7 +97,7 @@ pip install -r requirements.txt
 pip install gunicorn redis psutil
 ```
 
-4. **Configurar variables de entorno**
+3. **Configurar variables de entorno**
 
 Crear archivo `.env` en el directorio backend:
 
@@ -138,14 +138,14 @@ REDIS_URL=redis://internal_redis_server:6379/0
 CORS_ORIGINS=http://192.168.1.100,http://192.168.1.101
 ```
 
-5. **Inicializar base de datos**
+1. **Inicializar base de datos**
 
 ```bash
 flask db upgrade
 python create_test_user.py  # Crear usuario de prueba
 ```
 
-6. **Ejecutar aplicación**
+2. **Ejecutar aplicación**
 
 ```bash
 python run.py
@@ -478,7 +478,7 @@ server {
 #!/bin/bash
 set -e
 
-echo "🚀 Desplegando APPDPM Backend..."
+echo "Desplegando APPDPM Backend..."
 
 APP_DIR="/opt/appdpm/backend"
 SERVICE_NAME="appdpm-backend"
@@ -504,7 +504,7 @@ sudo systemctl start $SERVICE_NAME
 sudo systemctl reload nginx
 
 # Verificar
-curl -f http://127.0.0.1:5000/health && echo "✅ Despliegue exitoso"
+curl -f http://127.0.0.1:5000/health && echo "Despliegue exitoso"
 ```
 
 ## Seguridad (Configuración Interna)
@@ -536,7 +536,7 @@ curl -f http://127.0.0.1:5000/health && echo "✅ Despliegue exitoso"
 
 **IPs Permitidas (Ejemplo):**
 
-```
+```bash
 192.168.1.100-110  # Estaciones de trabajo
 192.168.1.200      # Servidor de aplicaciones
 192.168.1.201      # Servidor de base de datos
@@ -660,7 +660,7 @@ echo $DATABASE_URL
 
 Los tokens expiran en 1 hora. Renovar mediante:
 
-```
+```http
 POST /api/auth/login
 ```
 
@@ -675,11 +675,11 @@ Revisar logs en `logs/backend.log` para detalles específicos.
 SELECT query, mean_time, calls FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;
 ```
 
-## Solución de Problemas Comunes
+## Diagnóstico y Resolución de Problemas
 
-### Problemas de Conexión
+### Errores de Conexión
 
-**Error: "Failed to create application: Missing required configuration"**
+#### Error: "Failed to create application: Missing required configuration"
 
 ```bash
 # Verificar variables de entorno
@@ -691,7 +691,7 @@ source .env
 python run.py
 ```
 
-**Error: "Redis connection failed"**
+#### Error: "Redis connection failed"
 
 ```bash
 # Verificar Redis
@@ -702,7 +702,7 @@ redis-cli ping
 export REDIS_URL="memory://"
 ```
 
-**Error 500 en Endpoints**
+#### Error 500 en Endpoints
 
 ```bash
 # Revisar logs detallados
@@ -734,31 +734,6 @@ top -p $(pgrep -d, gunicorn)
 sudo systemctl reload appdpm-backend
 ```
 
-## Versioning y Changelog
-
-**Versión Actual**: 2.1.0 (Configurado para Uso Interno)
-
-### Changelog
-
-#### v2.1.0 (2025-09-24)
-
-- ✅ **Testing completo**: Smoke tests y pruebas de integración
-- ✅ **Configuración Redis**: Rate limiting mejorado
-- ✅ **Documentación actualizada**: Enfoque en uso interno
-- ✅ **Configuración Nginx**: Reverse proxy para producción
-- ✅ **Scripts de despliegue**: Automatización completa
-- ✅ **Monitoreo mejorado**: Health checks detallados
-
-#### v2.0.0 (2025-09-22)
-
-- Arquitectura modular completa
-- 8 módulos API independientes
-- Autenticación JWT robusta
-- Headers de seguridad implementados
-- Sistema de testing automatizado
-
----
-
 ## Información del Proyecto
 
 **Nombre**: Sistema DPM Backend API
@@ -767,7 +742,3 @@ sudo systemctl reload appdpm-backend
 **Mantenedor**: Equipo de Desarrollo Interno
 **Soporte**: Red interna únicamente
 **Documentación**: Este README (actualizado regularmente)
-
-**📞 Contacto Técnico**: [Equipo de Desarrollo]
-**🔧 Soporte**: [Mesa de Ayuda Interna]
-**📄 Wiki**: [Enlace a documentación interna]
