@@ -8,6 +8,7 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.models import PersonasMayores, PersonasACargo
 from app.api.utils.errors import ValidationError, BusinessLogicError
+from app.api.utils import paginate_query
 from app.auth_utils import validate_rut, normalize_rut
 from datetime import datetime, date
 
@@ -173,6 +174,52 @@ class PersonasACargoService:
     Service class for PersonasACargo operations.
     """
     
+    @staticmethod
+    def _base_query(nombre_filter=None, rut_filter=None, search=None):
+        """Build base query for personas a cargo with optional filters."""
+        query = PersonasACargo.query
+
+        if search:
+            search_term = f"%{search.strip()}%"
+            query = query.filter(
+                or_(
+                    PersonasACargo.rut.ilike(search_term),
+                    PersonasACargo.nombre.ilike(search_term),
+                    PersonasACargo.apellido.ilike(search_term),
+                )
+            )
+
+        if nombre_filter:
+            nombre_term = f"%{nombre_filter.strip()}%"
+            query = query.filter(
+                or_(
+                    PersonasACargo.nombre.ilike(nombre_term),
+                    PersonasACargo.apellido.ilike(nombre_term),
+                )
+            )
+
+        if rut_filter:
+            rut_term = f"%{rut_filter.strip()}%"
+            query = query.filter(PersonasACargo.rut.ilike(rut_term))
+
+        return query.order_by(PersonasACargo.apellido, PersonasACargo.nombre)
+
+    @staticmethod
+    def get_personas_a_cargo(
+        page=1,
+        per_page=10,
+        nombre_filter=None,
+        rut_filter=None,
+        search=None,
+    ):
+        """Get paginated list of personas a cargo with optional filters."""
+
+        query = PersonasACargoService._base_query(
+            nombre_filter=nombre_filter, rut_filter=rut_filter, search=search
+        )
+
+        return paginate_query(query, page, per_page)
+
     @staticmethod
     def validate_persona_a_cargo_data(data, is_update=False):
         """

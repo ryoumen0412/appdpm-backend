@@ -203,3 +203,5 @@ secret_key.txt
 # Local configuration overrides
 config_local.py
 local_config.py
+
+test_*.py

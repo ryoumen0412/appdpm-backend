@@ -9,9 +9,10 @@ from app.extensions import db
 from app.models import PersonasACargo
 from app.auth_utils import apoyo_required, admin_required, can_update_records, can_delete_vital_records
 from app.api.utils import (
-    success_response, error_response, created_response, deleted_response,
+    success_response, created_response, deleted_response,
     handle_db_error, handle_validation_error, handle_business_logic_error,
-    ValidationError, BusinessLogicError
+    ValidationError, BusinessLogicError, get_request_args, handle_crud_errors,
+    validate_pagination_params, log_api_call
 )
 from .services import PersonasACargoService
 
@@ -24,21 +25,23 @@ personas_a_cargo_bp = Blueprint(
 
 @personas_a_cargo_bp.route('', methods=['GET'])
 @apoyo_required
+@handle_crud_errors("persona a cargo", "listar")
+@validate_pagination_params
+@log_api_call
 def list_personas_a_cargo(current_user):
-    """
-    Get all personas a cargo.
-    
-    Returns:
-        JSON: List of all caregivers
-    """
-    try:
-        personas = PersonasACargo.query.all()
-        return success_response(
-            data=[persona.to_dict() for persona in personas]
-        )
-        
-    except Exception as e:
-        return handle_db_error(e, "retrieving personas a cargo")
+    """Get paginated personas a cargo list."""
+
+    args = get_request_args(request)
+
+    result = PersonasACargoService.get_personas_a_cargo(
+        page=args.get('page', 1),
+        per_page=min(args.get('per_page', 10), 100),
+        nombre_filter=args.get('nombre'),
+        rut_filter=args.get('rut'),
+        search=args.get('search'),
+    )
+
+    return success_response(data=result)
 
 
 @personas_a_cargo_bp.route('/<string:rut>', methods=['GET'])

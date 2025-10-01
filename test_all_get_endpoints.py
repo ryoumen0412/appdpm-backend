@@ -22,10 +22,10 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 
 # Configuración
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://100.126.196.33:5000"
 TEST_USER = {
     "rut_usuario": "11111111-1",
-    "password": "test123"
+    "password": "test1234"
 }
 
 class Colors:

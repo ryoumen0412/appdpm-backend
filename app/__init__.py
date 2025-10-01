@@ -44,12 +44,17 @@ def _init_extensions(app):
         migrate.init_app(app, db)
         limiter.init_app(app)
         
+        # CORS configuration - allow all origins for development
+        app.logger.info('CORS configured to allow all origins (development mode)')
+        
         cors.init_app(app, resources={
             r"/*": {
-                "origins": app.config.get('CORS_ORIGINS', ['http://localhost:3000']),
+                "origins": "*",  # Allow all origins
                 "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-                "allow_headers": ["Content-Type", "Authorization"],
-                "support_credentials": True
+                "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"],
+                "expose_headers": ["Content-Type", "Authorization"],
+                "supports_credentials": False,  # Must be False when origins is "*"
+                "max_age": 3600
             }
         })
     

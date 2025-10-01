@@ -56,7 +56,7 @@ def get_request_args(request_obj):
     string_filters = [
         'nombre', 'rut', 'username', 'sector', 'direccion', 'cargo',
         'email', 'telefono', 'fecha', 'fecha_inicio', 'fecha_fin',
-        'centro', 'actividad', 'nivel'
+        'centro', 'actividad', 'nivel', 'search'
     ]
     
     for filter_name in string_filters:
