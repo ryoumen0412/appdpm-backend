@@ -10,6 +10,9 @@ from .security_headers import setup_security_headers
 def create_app(config_class=Config):
     app = Flask(__name__)
     
+    # Disable strict slashes to avoid 308 redirects
+    app.url_map.strict_slashes = False
+    
     try:
         app.config.from_object(config_class)
         _validate_config(app.config)
